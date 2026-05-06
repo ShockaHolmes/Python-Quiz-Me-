@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Python Quiz Me!</title>
+  <style>
+    :root {
+      --bg: #1e1e2e;
+      --surface: #2a2a3e;
+      --card: #313145;
+      --accent: #f7c948;
+      --accent2: #5eead4;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --correct: #22c55e;
+      --wrong: #ef4444;
+      --btn-hover: #3d3d58;
+      --border: #44445a;
+      --easy: #22c55e;
+      --medium: #f7c948;
+      --hard: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    /* ── Shared card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 680px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--accent);
+      text-align: center;
+      margin-bottom: .3rem;
+    }
+    h2 { font-size: 1.3rem; color: var(--accent2); text-align: center; margin-bottom: 1.4rem; }
+    p.subtitle { color: var(--muted); text-align: center; margin-bottom: 1.6rem; font-size: .95rem; }
+
+    /* ── Level buttons ── */
+    .level-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.4rem;
+    }
+    .level-btn {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: .4rem; padding: 1.2rem .6rem;
+      border: 2px solid var(--border); border-radius: 12px;
+      background: var(--card); cursor: pointer;
+      transition: transform .15s, border-color .15s, background .15s;
+      font-size: .95rem; font-weight: 600; color: var(--text);
+    }
+    .level-btn:hover { transform: translateY(-3px); background: var(--btn-hover); }
+    .level-btn.easy  { border-color: var(--easy);   }
+    .level-btn.medium{ border-color: var(--medium);  }
+    .level-btn.hard  { border-color: var(--hard);    }
+    .level-btn .icon { font-size: 2rem; }
+    .level-btn .lname { font-size: 1rem; }
+    .level-btn .ldesc { font-size: .75rem; color: var(--muted); font-weight: 400; }
+
+    /* ── Generic button ── */
+    .btn {
+      display: inline-block; padding: .7rem 1.5rem;
+      border-radius: 8px; border: none; cursor: pointer;
+      font-size: 1rem; font-weight: 600; transition: opacity .15s, transform .1s;
+    }
+    .btn:hover { opacity: .85; transform: translateY(-1px); }
+    .btn-accent  { background: var(--accent);  color: #1e1e2e; }
+    .btn-outline { background: transparent; border: 2px solid var(--accent); color: var(--accent); }
+    .btn-danger  { background: var(--wrong);   color: #fff; }
+    .btn-success { background: var(--correct); color: #fff; }
+    .btn-muted   { background: var(--card); color: var(--muted); border: 1px solid var(--border); }
+
+    /* ── Continue banner ── */
+    .continue-box {
+      background: var(--card); border: 1px solid var(--accent2);
+      border-radius: 10px; padding: 1rem 1.2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem; margin-bottom: 1.4rem; flex-wrap: wrap;
+    }
+    .continue-box .info { flex: 1; min-width: 0; }
+    .continue-box .info strong { color: var(--accent2); }
+    .continue-box .info small  { color: var(--muted); display: block; margin-top: .2rem; font-size: .82rem; }
+
+    /* ── Progress bar ── */
+    .progress-wrap { margin-bottom: 1.2rem; }
+    .progress-labels { display: flex; justify-content: space-between; font-size: .82rem; color: var(--muted); margin-bottom: .35rem; }
+    .progress-bar { height: 8px; background: var(--card); border-radius: 9999px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--accent); border-radius: 9999px; transition: width .4s ease; }
+
+    /* ── Quiz header ── */
+    .quiz-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.4rem; flex-wrap: wrap; gap: .5rem; }
+    .badge { padding: .25rem .75rem; border-radius: 9999px; font-size: .82rem; font-weight: 700; }
+    .badge-easy   { background: rgba(34,197,94,.15);  color: var(--easy);   border: 1px solid var(--easy);   }
+    .badge-medium { background: rgba(247,201,72,.15); color: var(--medium); border: 1px solid var(--medium); }
+    .badge-hard   { background: rgba(239,68,68,.15);  color: var(--hard);   border: 1px solid var(--hard);   }
+
+    /* ── Question ── */
+    .question-text {
+      font-size: 1.12rem; font-weight: 600; line-height: 1.55;
+      margin-bottom: 1.3rem; min-height: 3.5rem;
+    }
+
+    /* ── Choices ── */
+    .choices { display: flex; flex-direction: column; gap: .65rem; margin-bottom: 1.3rem; }
+    .choice-btn {
+      display: flex; align-items: flex-start; gap: .8rem;
+      padding: .85rem 1rem; border-radius: 10px;
+      border: 2px solid var(--border); background: var(--card);
+      cursor: pointer; text-align: left; font-size: .97rem; color: var(--text);
+      transition: border-color .15s, background .15s;
+    }
+    .choice-btn:hover:not(:disabled) { border-color: var(--accent); background: var(--btn-hover); }
+    .choice-btn .letter {
+      min-width: 1.7rem; height: 1.7rem; border-radius: 50%;
+      background: var(--surface); border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .82rem; font-weight: 700; flex-shrink: 0;
+    }
+    .choice-btn.correct { border-color: var(--correct); background: rgba(34,197,94,.1); }
+    .choice-btn.correct .letter { background: var(--correct); border-color: var(--correct); color: #fff; }
+    .choice-btn.wrong   { border-color: var(--wrong);   background: rgba(239,68,68,.1); }
+    .choice-btn.wrong .letter   { background: var(--wrong);   border-color: var(--wrong);   color: #fff; }
+    .choice-btn:disabled { cursor: default; }
+
+    /* ── Feedback ── */
+    .feedback {
+      padding: .75rem 1rem; border-radius: 8px; font-weight: 600;
+      margin-bottom: 1rem; font-size: .95rem;
+    }
+    .feedback.correct { background: rgba(34,197,94,.15); color: var(--correct); border: 1px solid rgba(34,197,94,.4); }
+    .feedback.wrong   { background: rgba(239,68,68,.15);  color: var(--wrong);   border: 1px solid rgba(239,68,68,.4); }
+    .hidden { display: none !important; }
+
+    /* ── Action row ── */
+    .action-row { display: flex; gap: .75rem; flex-wrap: wrap; justify-content: flex-end; }
+
+    /* ── Results screen ── */
+    .score-circle {
+      width: 130px; height: 130px; border-radius: 50%;
+      border: 6px solid var(--accent);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      margin: 1rem auto 1.4rem; font-size: 2.4rem; font-weight: 800; color: var(--accent);
+    }
+    .score-circle span { font-size: .8rem; color: var(--muted); font-weight: 500; }
+    .stats-row { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1.4rem; }
+    .stat-box {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: .7rem 1rem; text-align: center; min-width: 90px;
+    }
+    .stat-box .val { font-size: 1.4rem; font-weight: 700; }
+    .stat-box .lbl { font-size: .75rem; color: var(--muted); }
+    .result-btns { display: flex; gap: .75rem; flex-wrap: wrap; justify-content: center; }
+
+    /* ── Confirm quit overlay ── */
+    .overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.7);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100; padding: 1rem;
+    }
+    .overlay .card { max-width: 380px; text-align: center; }
+    .overlay h3 { font-size: 1.4rem; margin-bottom: .5rem; color: var(--accent); }
+    .overlay p  { color: var(--muted); margin-bottom: 1.4rem; }
+    .overlay .btns { display: flex; gap: .75rem; justify-content: center; }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .level-grid { grid-template-columns: 1fr; }
+      h1 { font-size: 1.7rem; }
+      .choice-btn { font-size: .9rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     START SCREEN
+════════════════════════════════════════════════════════ -->
+<div id="screen-start" class="card">
+  <h1>🐍 Python Quiz Me!</h1>
+  <h2>Test Your Python Knowledge</h2>
+  <p class="subtitle">Each session is <strong>10 questions</strong>. Choose a difficulty to begin — or continue a saved game.</p>
+
+  <div id="continue-banner" class="continue-box hidden">
+    <div class="info">
+      <strong id="continue-title">Continue Game</strong>
+      <small id="continue-desc"></small>
+    </div>
+    <button class="btn btn-accent" onclick="continueGame()">▶ Continue</button>
+    <button class="btn btn-muted"  onclick="clearSave()">✕ Delete</button>
+  </div>
+
+  <div class="level-grid">
+    <button class="level-btn easy"   onclick="startGame('easy')">
+      <span class="icon">🟢</span>
+      <span class="lname">Easy</span>
+      <span class="ldesc">Syntax & basics</span>
+    </button>
+    <button class="level-btn medium" onclick="startGame('medium')">
+      <span class="icon">🟡</span>
+      <span class="lname">Medium</span>
+      <span class="ldesc">Intermediate</span>
+    </button>
+    <button class="level-btn hard"   onclick="startGame('hard')">
+      <span class="icon">🔴</span>
+      <span class="lname">Hard</span>
+      <span class="ldesc">Advanced</span>
+    </button>
+  </div>
+
+  <p class="subtitle" style="font-size:.8rem;">Progress is auto-saved to your browser.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     QUIZ SCREEN
+════════════════════════════════════════════════════════ -->
+<div id="screen-quiz" class="card hidden">
+  <div class="quiz-meta">
+    <span id="level-badge" class="badge"></span>
+    <span id="score-display" style="color:var(--muted);font-size:.9rem;"></span>
+    <button class="btn btn-danger" onclick="promptQuit()" style="padding:.4rem .9rem;font-size:.85rem;">⏹ Quit</button>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-labels">
+      <span id="q-counter"></span>
+      <span id="q-total"></span>
+    </div>
+    <div class="progress-bar"><div id="progress-fill" class="progress-fill" style="width:0%"></div></div>
+  </div>
+
+  <div id="question-text" class="question-text"></div>
+  <div id="choices" class="choices"></div>
+  <div id="feedback" class="feedback hidden"></div>
+  <div class="action-row">
+    <button id="btn-next" class="btn btn-accent hidden" onclick="nextQuestion()">Next →</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     RESULTS SCREEN
+════════════════════════════════════════════════════════ -->
+<div id="screen-results" class="card hidden">
+  <h1>Session Complete!</h1>
+  <div class="score-circle">
+    <div id="res-fraction"></div>
+    <span>Score</span>
+  </div>
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="val" id="res-correct" style="color:var(--correct)"></div>
+      <div class="lbl">Correct</div>
+    </div>
+    <div class="stat-box">
+      <div class="val" id="res-wrong" style="color:var(--wrong)"></div>
+      <div class="lbl">Wrong</div>
+    </div>
+    <div class="stat-box">
+      <div class="val" id="res-total-seen"></div>
+      <div class="lbl">Seen Total</div>
+    </div>
+    <div class="stat-box">
+      <div class="val" id="res-pct" style="color:var(--accent)"></div>
+      <div class="lbl">All-Time %</div>
+    </div>
+  </div>
+  <p id="res-message" class="subtitle" style="margin-bottom:1.4rem;"></p>
+  <div class="result-btns">
+    <button class="btn btn-accent"  onclick="nextSession()">▶ Next Session</button>
+    <button class="btn btn-outline" onclick="goHome()">🏠 Home</button>
+    <button class="btn btn-danger"  onclick="resetProgress()">🗑 Reset All</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     QUIT OVERLAY
+════════════════════════════════════════════════════════ -->
+<div id="overlay-quit" class="overlay hidden">
+  <div class="card">
+    <h3>⏹ Quit Session?</h3>
+    <p>Your progress so far will be saved. You can continue later from the home screen.</p>
+    <div class="btns">
+      <button class="btn btn-danger"  onclick="confirmQuit()">Quit &amp; Save</button>
+      <button class="btn btn-outline" onclick="cancelQuit()">Keep Playing</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   QUESTION BANK
+   150+ questions per level.
+   Each entry: { q: "...", choices: ["A","B","C","D"], a: 0..3 }
+   'a' is the index of the correct answer in choices[].
+════════════════════════════════════════════════════════ */
+const QUESTIONS = {
+
+/* ────────────── EASY ────────────── */
+easy: [
+  // 1–20: basics
+  {q:"What symbol is used for single-line comments in Python?",choices:["//","#","/*","--"],a:1},
+  {q:"Which keyword is used to define a function in Python?",choices:["function","def","fun","define"],a:1},
+  {q:"What is the output of: print(type(42))?",choices:["<class 'str'>","<class 'float'>","<class 'int'>","<class 'num'>"],a:2},
+  {q:"Which of the following is a valid variable name in Python?",choices:["2myvar","my-var","_myvar","my var"],a:2},
+  {q:"What does the len() function return?",choices:["The largest item","The number of items","The sum of items","The first item"],a:1},
+  {q:"How do you create an empty list in Python?",choices:["list = {}","list = ()","list = []","list = <>"],a:2},
+  {q:"What is the result of 10 % 3 in Python?",choices:["3","1","0","3.33"],a:1},
+  {q:"Which keyword is used to start a conditional statement?",choices:["when","if","check","cond"],a:1},
+  {q:"What does 'print' do in Python?",choices:["Reads input","Outputs text to console","Stores a value","Imports a module"],a:1},
+  {q:"What is the correct way to declare a string in Python?",choices:["str = Hello","str = 'Hello'","str = (Hello)","str = [Hello]"],a:1},
+  {q:"Which operator is used for exponentiation in Python?",choices:["^","**","^^","exp"],a:1},
+  {q:"What keyword creates a loop that runs while a condition is true?",choices:["for","loop","while","repeat"],a:2},
+  {q:"What is the index of the first element in a Python list?",choices:["1","-1","0","None"],a:2},
+  {q:"Which built-in function converts a string to an integer?",choices:["str()","float()","int()","num()"],a:2},
+  {q:"What does `bool(0)` return?",choices:["True","False","0","None"],a:1},
+  {q:"Which keyword exits a loop immediately?",choices:["exit","break","stop","return"],a:1},
+  {q:"What is the result of `'Py' + 'thon'`?",choices:["Py thon","Python","'Python'","Error"],a:1},
+  {q:"How do you get user input in Python 3?",choices:["read()","scan()","input()","get()"],a:2},
+  {q:"Which of these is NOT a Python data type?",choices:["int","string","float","bool"],a:1},
+  {q:"What does `range(5)` produce?",choices:["1 to 5","0 to 5","0 to 4","1 to 4"],a:2},
+  // 21–40: strings / operators
+  {q:"What method converts a string to all lowercase?",choices:[".upper()",".lower()",".strip()",".split()"],a:1},
+  {q:"What is the result of `len('Python')`?",choices:["5","6","7","4"],a:1},
+  {q:"What does the `in` keyword do when used with a list?",choices:["Adds an item","Removes an item","Checks membership","Sorts the list"],a:2},
+  {q:"Which function returns the absolute value of a number?",choices:["math.absolute()","abs()","absolute()","pos()"],a:1},
+  {q:"What is the result of `bool('')`?",choices:["True","False","None","Error"],a:1},
+  {q:"How is a multi-line string created in Python?",choices:["Using //","Using '''triple quotes'''","Using ##","Using <<>>"],a:1},
+  {q:"What does `str.strip()` do?",choices:["Splits the string","Removes whitespace from both ends","Converts to uppercase","Reverses the string"],a:1},
+  {q:"Which of the following prints 'Hello World'?",choices:["echo 'Hello World'","print('Hello World')","console.log('Hello World')","printf('Hello World')"],a:1},
+  {q:"What is `None` in Python?",choices:["The integer 0","An empty string","The absence of a value","A boolean False"],a:2},
+  {q:"What symbol is used for the assignment operator?",choices:["==","=",":=","=>"],a:1},
+  {q:"What does the `not` keyword do?",choices:["Inverts a boolean","Adds a condition","Imports a module","Defines a variable"],a:0},
+  {q:"Which method adds an item to the end of a list?",choices:[".add()",".insert()",".append()",".push()"],a:2},
+  {q:"What is the result of `3 == 3.0` in Python?",choices:["False","True","Error","None"],a:1},
+  {q:"What does `type('hello')` return?",choices:["<class 'int'>","<class 'str'>","<class 'char'>","<class 'text'>"],a:1},
+  {q:"Which keyword skips the rest of a loop iteration?",choices:["skip","next","pass","continue"],a:3},
+  {q:"What is the result of `True + True`?",choices:["True","False","2","Error"],a:2},
+  {q:"How do you check if a variable `x` is 10?",choices:["x = 10","x == 10","x := 10","x is 10"],a:1},
+  {q:"What does `list.pop()` do?",choices:["Adds an item","Removes and returns the last item","Clears the list","Returns the first item"],a:1},
+  {q:"Which keyword defines a class in Python?",choices:["object","struct","class","type"],a:2},
+  {q:"What is the correct file extension for Python files?",choices:[".py",".python",".pt",".pyt"],a:0},
+  // 41–60: control flow / functions
+  {q:"What does `elif` stand for?",choices:["else if","elif if","extra if","end if"],a:0},
+  {q:"What is the result of `10 // 3`?",choices:["3.33","3","4","1"],a:1},
+  {q:"Which built-in function returns the maximum value in a list?",choices:["biggest()","max()","largest()","top()"],a:1},
+  {q:"What does `print(2 ** 8)` output?",choices:["16","64","256","512"],a:2},
+  {q:"What is a 'tuple' in Python?",choices:["A mutable list","An immutable ordered sequence","An ordered dictionary","A set of unique values"],a:1},
+  {q:"How do you create a tuple with one element?",choices:["(1)","(1,)","[1]","{1}"],a:1},
+  {q:"Which method removes whitespace from the start of a string?",choices:[".rstrip()",".trim()",".lstrip()",".strip()"],a:2},
+  {q:"What does `sorted([3,1,2])` return?",choices:["[3,1,2]","[1,2,3]","(1,2,3)","Error"],a:1},
+  {q:"Which keyword is used to return a value from a function?",choices:["output","send","return","yield"],a:2},
+  {q:"What is the output of `print(1, 2, 3)`?",choices:["123","1,2,3","1 2 3","[1,2,3]"],a:2},
+  {q:"What does `str.split(',')` do?",choices:["Joins list items with ','","Splits string at each ','","Removes commas","Counts commas"],a:1},
+  {q:"What is `f'Hello {name}'` called in Python?",choices:["Format string (f-string)","Template string","String literal","Raw string"],a:0},
+  {q:"What does `list.reverse()` do?",choices:["Returns a reversed copy","Reverses the list in-place","Sorts in reverse","Returns reversed string"],a:1},
+  {q:"What is the result of `not True`?",choices:["True","False","None","Error"],a:1},
+  {q:"Which of the following is an immutable type?",choices:["list","dict","tuple","set"],a:2},
+  {q:"What does `min([5, 3, 8, 1])` return?",choices:["5","3","8","1"],a:3},
+  {q:"What does the `pass` statement do?",choices:["Exits the program","Does nothing; acts as a placeholder","Continues to the next iteration","Returns None"],a:1},
+  {q:"What is `**kwargs` in a function definition?",choices:["Positional arguments","Keyword arguments as a dict","Required arguments","Default arguments"],a:1},
+  {q:"What built-in converts a number to a string?",choices:["string()","str()","text()","char()"],a:1},
+  {q:"What does `range(2, 10, 2)` generate?",choices:["2,4,6,8","2,4,6,8,10","0,2,4,6,8","2,3,4,5,6,7,8,9"],a:0},
+  // 61–80: lists / dicts
+  {q:"How do you access the first item of a list `mylist`?",choices:["mylist[1]","mylist(0)","mylist[0]","mylist.first()"],a:2},
+  {q:"What is a Python dictionary?",choices:["Ordered list of values","Collection of key-value pairs","Set of unique values","Immutable sequence"],a:1},
+  {q:"How do you add a key-value pair to a dictionary `d`?",choices:["d.add(key, val)","d[key] = val","d.insert(key, val)","d.put(key, val)"],a:1},
+  {q:"Which method returns all keys of a dictionary?",choices:[".values()",".items()",".keys()",".all()"],a:2},
+  {q:"What is the result of `[1,2,3][1:3]`?",choices:["[1,2]","[2,3]","[1,2,3]","[2]"],a:1},
+  {q:"How do you remove a key from a dictionary?",choices:["del d[key]","d.remove(key)","d.delete(key)","d.pop(key) only"],a:0},
+  {q:"What does `'hello'.upper()` return?",choices:["hello","HELLO","Hello","hELLO"],a:1},
+  {q:"Which statement is used to handle exceptions?",choices:["catch","try/except","error/handle","rescue"],a:1},
+  {q:"What does `list.count(x)` return?",choices:["The index of x","Number of occurrences of x","True if x is in list","Length of list"],a:1},
+  {q:"What is the result of `[0] * 3`?",choices:["[0,1,2]","[0,0,0]","[3]","Error"],a:1},
+  {q:"Which Python keyword imports a module?",choices:["include","require","import","use"],a:2},
+  {q:"What is the output of `print('a' * 3)`?",choices:["a3","aaa","3a","a*3"],a:1},
+  {q:"What does `enumerate()` do?",choices:["Counts list items","Returns (index, value) pairs","Sorts the list","Reverses the list"],a:1},
+  {q:"How do you open a file in Python?",choices:["open('file.txt')","file.open('file.txt')","read('file.txt')","load('file.txt')"],a:0},
+  {q:"What is the scope of a variable defined inside a function?",choices:["Global","Local","Module","Class"],a:1},
+  {q:"What does `zip([1,2],[3,4])` produce?",choices:["[(1,3),(2,4)]","[1,2,3,4]","[(1,2),(3,4)]","Error"],a:0},
+  {q:"What does `list.index(x)` return?",choices:["Count of x","Value at index x","First index of x","True if x exists"],a:2},
+  {q:"Which operator tests identity (same object) in Python?",choices:["==","===","is","eq"],a:2},
+  {q:"What is `*args` in a function definition?",choices:["Keyword arguments","Variable number of positional arguments","Required arguments","All arguments as a dict"],a:1},
+  {q:"What method joins a list of strings?",choices:[".concat()",".join()",".merge()",".combine()"],a:1},
+  // 81–100: more basics
+  {q:"What does `bool('False')` return?",choices:["False","True","None","Error"],a:1},
+  {q:"What is the result of `round(3.567, 2)`?",choices:["3.5","3.57","3.56","4.0"],a:1},
+  {q:"Which method checks if a string starts with a substring?",choices:[".begins()",".startswith()",".starts()",".prefix()"],a:1},
+  {q:"What does `list.clear()` do?",choices:["Removes last item","Removes all items","Sorts the list","Returns empty list"],a:1},
+  {q:"What is the result of `'hello'[1]`?",choices:["h","e","l","o"],a:1},
+  {q:"Which built-in function returns the sum of a list?",choices:["total()","sum()","add()","plus()"],a:1},
+  {q:"What keyword is used in a `for` loop to iterate over a sequence?",choices:["from","of","in","at"],a:2},
+  {q:"What does `dict.get(key, default)` do?",choices:["Sets a key","Returns value or default if key missing","Deletes a key","Returns all values"],a:1},
+  {q:"What is `True and False`?",choices:["True","False","None","Error"],a:1},
+  {q:"What does `int('42')` return?",choices:["'42'","42","42.0","Error"],a:1},
+  {q:"How do you check the length of a string `s`?",choices:["s.length","len(s)","s.len()","size(s)"],a:1},
+  {q:"Which statement stops function execution and returns a value?",choices:["break","stop","return","exit"],a:2},
+  {q:"What is a Python 'set'?",choices:["Ordered list","Key-value store","Unordered collection of unique elements","Immutable tuple"],a:2},
+  {q:"What does `'Python'.replace('P','J')` return?",choices:["Jython","JPython","Python","Error"],a:0},
+  {q:"What is the result of `list(range(3))`?",choices:["[1,2,3]","[0,1,2]","[0,1,2,3]","range(3)"],a:1},
+  {q:"What does `float('3.14')` return?",choices:["'3.14'","3","3.14","314"],a:2},
+  {q:"Which collection type is unordered and uses curly braces with no pairs?",choices:["list","dict","set","tuple"],a:2},
+  {q:"What does `str.endswith(suffix)` return?",choices:["The suffix","True or False","The index","None"],a:1},
+  {q:"What is the result of `10 != 10`?",choices:["True","False","None","Error"],a:1},
+  {q:"How do you define a function with a default argument?",choices:["def f(x=5):","def f(x:5):","def f(x,5):","def f(5=x):"],a:0},
+  // 101–120
+  {q:"What does `print(end='')` change?",choices:["Font size","Line ending after print","Separator between args","Output color"],a:1},
+  {q:"What is the result of `'abc' == 'ABC'`?",choices:["True","False","None","Error"],a:1},
+  {q:"What does `list.insert(1, 'x')` do?",choices:["Adds 'x' at index 1","Removes index 1","Replaces index 1 with 'x'","Adds 'x' at the end"],a:0},
+  {q:"What does `dict.update({'b':2})` do?",choices:["Creates a new dict","Merges/updates the dict with new keys","Deletes key 'b'","Returns list of pairs"],a:1},
+  {q:"What is `x = y = 5` called?",choices:["Double assignment","Chained assignment","Tuple unpacking","Multiple declaration"],a:1},
+  {q:"Which method returns a list of (key, value) tuples from a dict?",choices:[".keys()",".values()",".items()",".pairs()"],a:2},
+  {q:"What is the result of `[1,2] + [3,4]`?",choices:["[1,2,3,4]","[4,6]","Error","[[1,2],[3,4]]"],a:0},
+  {q:"What keyword re-raises the current exception?",choices:["throw","rethrow","raise","error"],a:2},
+  {q:"What does `help(str)` do?",choices:["Returns length of str","Prints documentation","Converts to string","Checks type"],a:1},
+  {q:"What is the result of `bool([])`?",choices:["True","False","None","Error"],a:1},
+  {q:"What does `print(sep=',')`  change?",choices:["Line ending","Separator between printed arguments","Encoding","Nothing"],a:1},
+  {q:"What is the result of `-5 % 3` in Python?",choices:["-2","1","2","-1"],a:0},
+  {q:"Which method sorts a list in-place?",choices:[".sorted()",".sort()",".order()",".arrange()"],a:1},
+  {q:"What does `str.find('o')` return?",choices:["True","Count of 'o'","First index of 'o'","All indices"],a:2},
+  {q:"What is a 'namespace' in Python?",choices:["File system directory","Mapping from names to objects","HTML namespace","Import path"],a:1},
+  {q:"What does `input()` always return?",choices:["int","float","str","bool"],a:2},
+  {q:"What does the `global` keyword do?",choices:["Creates global class","Refers to global-scope variable inside a function","Makes variable immutable","Exports variable"],a:1},
+  {q:"Which operator checks that two values are NOT equal?",choices:["!","!=","<>","not=="],a:1},
+  {q:"What is a 'for' loop most often used for?",choices:["Indefinite repetition","Iterating over sequences","Exception handling","Defining functions"],a:1},
+  {q:"Which Python version introduced f-strings?",choices:["Python 2","Python 3.0","Python 3.6","Python 3.10"],a:2},
+  // 121–150
+  {q:"What does `list.extend([4,5])` do?",choices:["Appends a single list object","Adds each item of the argument to the list","Creates a copy","Returns new list"],a:1},
+  {q:"What is `None == False` in Python?",choices:["True","False","None","Error"],a:1},
+  {q:"What does `dict.pop('key')` do?",choices:["Returns the key","Removes and returns value for key","Adds a key","Checks if key exists"],a:1},
+  {q:"How do you check if a key exists in a dict?",choices:["key in d","d.has(key)","d.exists(key)","d.contains(key)"],a:0},
+  {q:"What does `str.isdigit()` return?",choices:["The digits","True if all chars are digits","Count of digits","First digit"],a:1},
+  {q:"What is the result of `print(type([]))` ?",choices:["<class 'tuple'>","<class 'list'>","<class 'array'>","<class 'set'>"],a:1},
+  {q:"Which method removes the first occurrence of a value from a list?",choices:[".pop()",".discard()",".remove()",".delete()"],a:2},
+  {q:"What does `set.add(x)` do?",choices:["Adds x to the set","Returns x + 1","Creates a new set","Checks if x is in set"],a:0},
+  {q:"What does `'hello'.capitalize()` return?",choices:["HELLO","hello","Hello","hELLO"],a:2},
+  {q:"Which built-in function iterates two lists together?",choices:["combine()","zip()","merge()","pair()"],a:1},
+  {q:"What is the result of `5 > 3 and 2 < 4`?",choices:["False","True","None","Error"],a:1},
+  {q:"What does `tuple([1,2,3])` return?",choices:["[1,2,3]","(1,2,3)","1,2,3","Error"],a:1},
+  {q:"What does `print(f'{5*2}')` output?",choices:["5*2","10","25","Error"],a:1},
+  {q:"What is the result of `'abc'[-1]`?",choices:["a","b","c","Error"],a:2},
+  {q:"Which keyword raises an exception manually?",choices:["throw","error","raise","except"],a:2},
+  {q:"What does `str.count('l')` return on 'hello'?",choices:["1","2","3","0"],a:1},
+  {q:"What is `a, b = 1, 2` called?",choices:["Multiple assignment","Tuple unpacking","Chained assignment","Destructuring"],a:1},
+  {q:"What does `isinstance(x, int)` return?",choices:["x converted to int","True if x is int","Type of x","None"],a:1},
+  {q:"What does `chr(65)` return?",choices:["'A'","65","'a'","'B'"],a:0},
+  {q:"What does `ord('A')` return?",choices:["'a'","65","'A'","97"],a:1},
+  // 141–150: bonus easy
+  {q:"What does `str.isalpha()` return?",choices:["True if string has letters and digits","True if all chars are alphabetic","True if string is uppercase","Count of letters"],a:1},
+  {q:"Which built-in shows all available methods on an object?",choices:["help()","methods()","dir()","list()"],a:2},
+  {q:"What does `list.copy()` return?",choices:["Reference to same list","Shallow copy of the list","Deep copy","None"],a:1},
+  {q:"What is the result of `'  hello  '.strip()`?",choices:["'  hello  '","'hello'","'hello  '","'  hello'"],a:1},
+  {q:"What does `print('a', 'b', sep='-')` output?",choices:["a b","a-b","ab","a,b"],a:1},
+  {q:"How do you convert a list to a set in Python?",choices:["set = list(mylist)","set = {mylist}","set = set(mylist)","set = frozenset[mylist]"],a:2},
+  {q:"What does `max('apple', 'banana')` return?",choices:["'apple'","'banana'","Error","None"],a:1},
+  {q:"What is the result of `10 < 20 < 30`?",choices:["False","True","Error","20"],a:1},
+  {q:"What does `dict.values()` return?",choices:["List of keys","View of values","Tuple of pairs","Set of values"],a:1},
+  {q:"Which method checks if all characters in a string are digits?",choices:[".isalpha()",".isnumeric()",".isdigit()",".isdecimal()"],a:2},
+],
+
+/* ────────────── MEDIUM ────────────── */
+medium: [
+  // 1–20: comprehensions, functions
+  {q:"What is a list comprehension?",choices:["A method to copy a list","A concise way to create lists using a for-loop","A class that inherits from list","A sorted list"],a:1},
+  {q:"What does `[x**2 for x in range(5)]` produce?",choices:["[0,1,4,9,16]","[1,4,9,16,25]","[0,1,2,3,4]","[1,2,3,4,5]"],a:0},
+  {q:"What is a lambda function?",choices:["A named function","An anonymous single-expression function","A generator function","A recursive function"],a:1},
+  {q:"What does `map(str, [1,2,3])` return?",choices:["['1','2','3']","[1,2,3]","A map object","Error"],a:2},
+  {q:"What does `filter(None, [0, 1, '', 2])` keep?",choices:["[0,'',None]","[1,2]","[0,1,'',2]","Error"],a:1},
+  {q:"What is a generator in Python?",choices:["A function that returns a list","A function that yields values lazily","A class that creates objects","A decorator"],a:1},
+  {q:"What keyword is used in a generator function?",choices:["return","generate","yield","send"],a:2},
+  {q:"What does `next()` do with a generator?",choices:["Resets the generator","Gets the next yielded value","Skips one item","Returns all items"],a:1},
+  {q:"Which built-in creates a generator of key-value pairs from two lists?",choices:["pair()","zip()","map()","combine()"],a:1},
+  {q:"What is a decorator in Python?",choices:["A function that modifies another function","A subclass feature","A data type","A type annotation"],a:0},
+  {q:"What syntax applies a decorator `my_dec` to function `f`?",choices:["f = my_dec(f)","@my_dec above def f()","both A and B","my_dec: def f()"],a:2},
+  {q:"What does `functools.wraps(func)` do in a decorator?",choices:["Speeds up the function","Preserves the original function's metadata","Makes function immutable","Caches results"],a:1},
+  {q:"What is a closure?",choices:["A function with no return","A nested function that captures variables from its enclosing scope","An anonymous class","A finally block"],a:1},
+  {q:"What does `*args` collect?",choices:["Keyword arguments into dict","Positional arguments into tuple","Default arguments","Required arguments only"],a:1},
+  {q:"What is the purpose of `__init__` in a class?",choices:["Destroys the object","Initializes a new instance","Defines class variables","Imports the module"],a:1},
+  {q:"What is `self` in a class method?",choices:["A keyword like 'this' in Java/C++","The class itself","A static reference","An optional parameter"],a:0},
+  {q:"What does `@staticmethod` do?",choices:["Caches result","Defines a method that doesn't receive class/instance","Makes attribute immutable","Calls parent method"],a:1},
+  {q:"What is the difference between `@classmethod` and `@staticmethod`?",choices:["No difference","classmethod receives cls; staticmethod receives neither cls nor self","staticmethod receives cls","classmethod receives self only"],a:1},
+  {q:"What does `super()` do?",choices:["Creates a copy of the class","Calls a method on the parent class","Defines a subclass","Deletes an attribute"],a:1},
+  {q:"What is method resolution order (MRO)?",choices:["Order in which method arguments are resolved","Order Python searches base classes for a method","Alphabetical method listing","Import order"],a:1},
+  // 21–40: OOP
+  {q:"What is inheritance in OOP?",choices:["One class copies code from another","A child class extends a parent class","Two classes share a method","A function returning a class"],a:1},
+  {q:"What does `isinstance(obj, Cls)` return?",choices:["True if obj is an instance of Cls or its subclass","True only if direct instance","The class name","None"],a:0},
+  {q:"What does `issubclass(A, B)` check?",choices:["If A is an instance of B","If A is a subclass of B","If B inherits from A","If A equals B"],a:1},
+  {q:"What is multiple inheritance?",choices:["A class has multiple methods","A class inherits from more than one base class","Multiple objects of one class","Method overloading"],a:1},
+  {q:"What is a property decorator used for?",choices:["Creating class variables","Turning a method into an attribute-style getter","Importing properties","Defining static methods"],a:1},
+  {q:"What does `@property` combined with `@x.setter` do?",choices:["Locks the attribute","Defines both read and write access to an attribute","Deletes an attribute","Creates a class variable"],a:1},
+  {q:"What is `__str__` used for?",choices:["Internal representation","Human-readable string representation","Comparison","Hashing"],a:1},
+  {q:"What is `__repr__` used for?",choices:["User-friendly output","Unambiguous developer-facing representation","Length of object","Equality check"],a:1},
+  {q:"What does `__len__` allow you to define?",choices:["Iteration","Length with len()","Truthiness","Printing"],a:1},
+  {q:"What does `__eq__` define?",choices:["Less-than comparison","Identity check","Equality (==) between objects","Hash value"],a:2},
+  {q:"What exception does accessing a missing dict key raise?",choices:["ValueError","IndexError","KeyError","AttributeError"],a:2},
+  {q:"What exception does accessing an out-of-range list index raise?",choices:["KeyError","ValueError","IndexError","TypeError"],a:2},
+  {q:"What does a `finally` block do?",choices:["Runs only if exception occurs","Always runs after try/except","Skips exceptions","Ends the program"],a:1},
+  {q:"How do you raise a custom exception?",choices:["throw MyError()","raise MyError()","error MyError()","except MyError()"],a:1},
+  {q:"What does `with open('f') as f:` provide?",choices:["Faster file reading","Automatic file close via context manager","File locking","Binary mode only"],a:1},
+  {q:"What is `__enter__` and `__exit__`?",choices:["Constructor and destructor","Methods for context manager protocol","Import and export hooks","Iterator protocol"],a:1},
+  {q:"What is duck typing?",choices:["Checking exact type before calling","Using an object based on its interface, not type","Type casting","Overloading operators"],a:1},
+  {q:"What is `__slots__`?",choices:["Limits allowed instance attributes, saving memory","Creates a list in a class","Defines abstract methods","Sets class version"],a:0},
+  {q:"What does `abc.ABC` provide?",choices:["Abstract base class support","Array-based containers","Auto-formatting","Attribute binding class"],a:0},
+  {q:"What decorator marks a method as abstract?",choices:["@abstract","@abstractmethod","@virtual","@override"],a:1},
+  // 41–60: modules, exceptions, files
+  {q:"What does `import os` give you access to?",choices:["Online storage","Operating system interfaces","Object storage","Option sets"],a:1},
+  {q:"What does `os.path.join()` do?",choices:["Appends URLs","Joins path components OS-appropriately","Merges files","Creates directories"],a:1},
+  {q:"What does `sys.argv` contain?",choices:["System arguments as list starting with script name","All environment variables","Argument parser","Input stream"],a:0},
+  {q:"What is `__name__ == '__main__'` used for?",choices:["Naming the module","Running code only when file is executed directly","Defining the main class","Importing conditionally"],a:1},
+  {q:"What does `json.dumps(obj)` do?",choices:["Loads JSON from file","Serializes Python object to JSON string","Decodes bytes","Dumps to file"],a:1},
+  {q:"What does `json.loads(s)` do?",choices:["Saves string to file","Parses JSON string to Python object","Encodes to bytes","Lists JSON keys"],a:1},
+  {q:"What is `pickle` used for?",choices:["Reading CSV files","Serializing/deserializing Python objects to binary","Database queries","HTTP requests"],a:1},
+  {q:"What does `collections.defaultdict` do?",choices:["Sorts dict automatically","Provides a default value for missing keys","Limits dict size","Orders keys"],a:1},
+  {q:"What does `collections.Counter` do?",choices:["Counts loop iterations","Creates a dict with item counts","Orders a collection","Limits duplicates"],a:1},
+  {q:"What is `collections.OrderedDict` (pre-3.7)?",choices:["A dict that limits size","A dict that remembers insertion order","A dict with default values","A read-only dict"],a:1},
+  {q:"What does `itertools.chain([1,2],[3,4])` produce?",choices:["[[1,2],[3,4]]","[1,2,3,4] as iterator","Error","(1,2,3,4)"],a:1},
+  {q:"What does `itertools.product('AB', repeat=2)` produce?",choices:["All permutations","Cartesian product: AA AB BA BB","Sum of elements","Error"],a:1},
+  {q:"What is a context manager?",choices:["A class managing state","Object that defines setup/teardown with 'with'","Memory allocator","Thread synchronizer"],a:1},
+  {q:"What does `@contextmanager` from contextlib do?",choices:["Creates thread-safe function","Turns a generator into a context manager","Caches a function","Adds timeout"],a:1},
+  {q:"What is the difference between `r+` and `w+` file modes?",choices:["No difference","r+ reads/writes without truncating; w+ truncates first","r+ only reads; w+ only writes","r+ is binary; w+ is text"],a:1},
+  {q:"What does `str.format()` do?",choices:["Reformats file","Inserts values into a string template","Converts to bytes","Applies regex"],a:1},
+  {q:"What is a regular expression?",choices:["A normal Python expression","A pattern for matching strings","A math formula","A recursive expression"],a:1},
+  {q:"What module provides regex support in Python?",choices:["regex","pattern","re","match"],a:2},
+  {q:"What does `re.search(pattern, string)` return?",choices:["List of all matches","First match object or None","True/False","Count of matches"],a:1},
+  {q:"What does `re.findall(pattern, string)` return?",choices:["First match","All non-overlapping matches as list","Match object","None"],a:1},
+  // 61–80: advanced functions
+  {q:"What does `functools.lru_cache` do?",choices:["Logs recent calls","Caches function results for repeated calls","Limits recursion","Loads resources"],a:1},
+  {q:"What is memoization?",choices:["Recording function calls","Caching expensive function results","Documenting code","Memory cleanup"],a:1},
+  {q:"What does `reduce(f, [1,2,3,4])` compute?",choices:["Sum","f(f(f(1,2),3),4)","Max value","Filter"],a:1},
+  {q:"What is a partial function (functools.partial)?",choices:["Incomplete function","Function with some arguments pre-filled","Recursive function","Abstract function"],a:1},
+  {q:"What does `operator.itemgetter(1)` do?",choices:["Gets item at index 1","Returns second element of a subscriptable object","Returns key 1","Does nothing"],a:1},
+  {q:"What is the output of `(lambda x,y: x+y)(3,4)`?",choices:["7","(3,4)","lambda","Error"],a:0},
+  {q:"What does `sorted(data, key=len)` do?",choices:["Sorts by value","Sorts by length of each element","Sorts numerically","Reverses order"],a:1},
+  {q:"What does `any([False, True, False])` return?",choices:["False","True","[True]","None"],a:1},
+  {q:"What does `all([True, True, False])` return?",choices:["True","False","[False]","None"],a:1},
+  {q:"What is `dict comprehension` syntax?",choices:["{k: v for k,v in pairs}","[k: v for k,v in pairs]","(k: v for k,v in pairs)","<k: v for k,v in pairs>"],a:0},
+  {q:"What is `set comprehension` syntax?",choices:["{x for x in lst}","[x for x in lst]","(x for x in lst)","<x for x in lst>"],a:0},
+  {q:"What is a generator expression?",choices:["[x for x in ...]","(x for x in ...)","gen{x for x in ...}","yield(x for x in ...)"],a:1},
+  {q:"What does `next(gen, default)` do?",choices:["Always raises StopIteration","Returns next value or default if exhausted","Returns first item","Skips items"],a:1},
+  {q:"What exception signals end of a generator?",choices:["EndIteration","GeneratorEnd","StopIteration","IterStop"],a:2},
+  {q:"What is `__iter__` used for?",choices:["Checking if iterable","Returning an iterator object","Defining length","Hashing"],a:1},
+  {q:"What does `__next__` define?",choices:["How to get the next element in iteration","Comparison","Initialization","Addition"],a:0},
+  {q:"What is the difference between `__iter__` and `__getitem__`?",choices:["No difference","__iter__ uses iterator protocol; __getitem__ supports index access (old protocol)","__getitem__ is faster","__iter__ is deprecated"],a:1},
+  {q:"What does `list(map(lambda x: x*2, [1,2,3]))` return?",choices:["[2,4,6]","[1,2,3]","[1,4,9]","map object"],a:0},
+  {q:"What does `list(filter(lambda x: x>2, [1,2,3,4]))` return?",choices:["[3,4]","[1,2]","[2,3,4]","[4]"],a:0},
+  {q:"What does `zip(*matrix)` do to a 2-D list?",choices:["Flattens it","Transposes it","Sorts it","Reverses it"],a:1},
+  // 81–100: string, more
+  {q:"What does `str.zfill(5)` do to '42'?",choices:["Pads with spaces","Pads with zeros: '00042'","Adds 5 chars","Error"],a:1},
+  {q:"What does `str.center(10, '-')` do?",choices:["Left-aligns with '-'","Centers string in width 10 filled with '-'","Right-aligns","Adds 10 dashes"],a:1},
+  {q:"What does `bytes.decode('utf-8')` do?",choices:["Encodes to bytes","Converts bytes to string","Reads a file","Compresses data"],a:1},
+  {q:"What does `str.encode('utf-8')` return?",choices:["str","bytes","int","list"],a:1},
+  {q:"What is `struct.pack('i', 1024)`?",choices:["JSON encoding","Binary packing of data","String formatting","Compression"],a:1},
+  {q:"What does `pathlib.Path` provide over `os.path`?",choices:["Faster I/O","Object-oriented file path manipulation","Async file access","GUI file picker"],a:1},
+  {q:"What does `@dataclass` do?",choices:["Creates async class","Auto-generates __init__, __repr__, __eq__ for a class","Freezes the class","Adds logging"],a:1},
+  {q:"What is `typing.Optional[int]`?",choices:["int or str","int or None","Required int","int with default"],a:1},
+  {q:"What is `typing.Union[int, str]`?",choices:["int and str simultaneously","Either int or str","Neither","Error"],a:1},
+  {q:"What does `typing.List[int]` indicate?",choices:["A single int","A list of ints","Mutable int","Error"],a:1},
+  {q:"What is a `NamedTuple`?",choices:["A dict with names","A tuple subclass with named fields","A named list","An enum"],a:1},
+  {q:"What does `enum.Enum` provide?",choices:["Runtime enumeration of types","Symbolic names for a set of values","Iterator over values","Ordered dict"],a:1},
+  {q:"What is `__all__` in a module?",choices:["List of all functions","Controls what is exported on 'from module import *'","Total count","All attributes"],a:1},
+  {q:"What does `if __name__ == '__main__':` guard against?",choices:["Syntax errors","Running code when module is imported","Infinite loops","Import cycles"],a:1},
+  {q:"What is a `requirements.txt` file?",choices:["Test config","List of project dependencies with versions","Documentation","Git config"],a:1},
+  {q:"What does `pip install -r requirements.txt` do?",choices:["Runs tests","Installs all packages listed","Creates virtual env","Upgrades Python"],a:1},
+  {q:"What is a virtual environment?",choices:["Isolated Python environment per project","Online IDE","Container","Remote server"],a:0},
+  {q:"What tool creates a virtual environment?",choices:["pip","conda only","venv","virtualenv only"],a:2},
+  {q:"What does `__init__.py` do in a directory?",choices:["Auto-runs tests","Marks directory as a Python package","Stores constants","Configures logging"],a:1},
+  {q:"What is `__pycache__`?",choices:["Hidden git directory","Cache of compiled bytecode (.pyc) files","Test results","Module registry"],a:1},
+  // 101–120
+  {q:"What does `try/except/else` do?",choices:["else runs if exception occurs","else runs if no exception occurs","else always runs","else is invalid"],a:1},
+  {q:"What is `ExceptionGroup` (Python 3.11+)?",choices:["A list of exceptions","Holds multiple exceptions raised at once","A base class","A retry mechanism"],a:1},
+  {q:"What does `logging.basicConfig(level=logging.DEBUG)` do?",choices:["Silences logs","Sets minimum log level to DEBUG","Disables logging","Formats output"],a:1},
+  {q:"What does `assert x > 0, 'x must be positive'` do?",choices:["Prints if False","Raises AssertionError if x<=0","Sets x to 0","Logs message"],a:1},
+  {q:"What does `-O` flag do when running Python?",choices:["Optimizes memory","Disables assert statements","Opens REPL","Runs as daemon"],a:1},
+  {q:"What is `threading.Thread` used for?",choices:["Async I/O","Running code in a separate OS thread","Process forking","Event loop"],a:1},
+  {q:"What is the GIL?",choices:["Global Interface Layer","Global Interpreter Lock — prevents multiple threads from executing Python bytecode simultaneously","Graph Integrity Lock","Garbage Inspector Launcher"],a:1},
+  {q:"What is `multiprocessing.Process` used for?",choices:["Threading","Spawning a separate process bypassing GIL","Async tasks","File handling"],a:1},
+  {q:"What does `queue.Queue` provide?",choices:["Sorted collection","Thread-safe FIFO queue","Async event queue","Priority heap"],a:1},
+  {q:"What is `concurrent.futures.ThreadPoolExecutor`?",choices:["Process pool","High-level thread pool for concurrent tasks","Async event loop","Coroutine runner"],a:1},
+  {q:"What does `time.sleep(1)` do?",choices:["Speeds CPU","Pauses execution for 1 second","Sets timeout","Measures time"],a:1},
+  {q:"What does `datetime.datetime.now()` return?",choices:["Unix timestamp","Current local datetime object","ISO string","None"],a:1},
+  {q:"What does `random.shuffle(lst)` do?",choices:["Returns shuffled copy","Shuffles list in-place","Sorts randomly","Shuffles and returns"],a:1},
+  {q:"What does `random.choice(seq)` return?",choices:["Random index","Random element from sequence","All elements shuffled","None"],a:1},
+  {q:"What is `hashlib.sha256(data).hexdigest()`?",choices:["Base64 encoded data","Hex string of SHA-256 hash","MD5 hash","Encrypted data"],a:1},
+  {q:"What does `copy.deepcopy(obj)` do?",choices:["Copies reference","Creates a completely independent clone","Shallow copy","Copies to file"],a:1},
+  {q:"What is a shallow copy?",choices:["Copy of only the outer container; inner objects still shared","Full independent copy","Copy by reference","Read-only copy"],a:0},
+  {q:"What does `id(x)` return?",choices:["Memory size","Unique identity (memory address) of object","Hash value","Type ID"],a:1},
+  {q:"What does `vars(obj)` return?",choices:["Object type","Object's __dict__","List of methods","Module list"],a:1},
+  {q:"What does `dir(obj)` return?",choices:["Source code","List of valid attributes and methods","Memory layout","Type hierarchy"],a:1},
+  // 121–150
+  {q:"What is `getattr(obj, 'name', default)` used for?",choices:["Sets attribute","Gets attribute, returning default if missing","Deletes attribute","Checks type"],a:1},
+  {q:"What is `setattr(obj, 'name', val)` used for?",choices:["Gets attribute","Sets attribute dynamically","Freezes attribute","Deletes attribute"],a:1},
+  {q:"What is `delattr(obj, 'name')` used for?",choices:["Gets attribute","Checks attribute","Deletes an attribute from object","Renames attribute"],a:2},
+  {q:"What does `hasattr(obj, 'name')` return?",choices:["Attribute value","True if attribute exists","None","Error"],a:1},
+  {q:"What does `callable(obj)` return?",choices:["True if obj is a number","True if obj can be called","Type of obj","None"],a:1},
+  {q:"What is a `__call__` method?",choices:["Initializer","Makes an instance callable like a function","Destructor","Copy constructor"],a:1},
+  {q:"What is `__del__` in Python?",choices:["Deletes a variable","Finalizer/destructor called when object is garbage collected","Unlinks a module","None"],a:1},
+  {q:"What is `__hash__` used for?",choices:["String conversion","Returns hash value for use in dicts/sets","Comparison","Iteration"],a:1},
+  {q:"What does making an object `__hash__ = None` do?",choices:["Makes it faster","Makes it unhashable (can't be dict key/set member)","Resets hash","Adds randomness"],a:1},
+  {q:"What is operator overloading?",choices:["Replacing built-in operators","Defining behavior of operators for custom classes via dunder methods","Adding new operators","Overriding functions"],a:1},
+  {q:"What is `__add__` used for?",choices:["Appending to list","Defining + operator for objects","Addition assignment","Class addition"],a:1},
+  {q:"What does `__contains__` define?",choices:["Iterator","The `in` operator","Length","Iteration"],a:1},
+  {q:"What is `__getitem__` used for?",choices:["Getting attributes","Subscript access obj[key]","Getting all items","Class factory"],a:1},
+  {q:"What is `__setitem__` used for?",choices:["Getting items","Setting items via obj[key] = val","Deleting items","Creating items"],a:1},
+  {q:"What does `__bool__` define?",choices:["Truthiness of an object in boolean context","String representation","Hash value","Equality"],a:0},
+  {q:"What is `__class_getitem__` used for?",choices:["Getting class variables","Supporting generic syntax like MyClass[T]","Class instantiation","Attribute access"],a:1},
+  {q:"What is `__init_subclass__` used for?",choices:["Initializing parent class","Called when a class is subclassed; allows customization","Creating metaclass","Registering plugins"],a:1},
+  {q:"What does `dataclasses.field(default_factory=list)` do?",choices:["Sets default to None","Provides a mutable default (new list per instance)","Makes field required","Freezes the field"],a:1},
+  {q:"What does `@dataclass(frozen=True)` do?",choices:["Removes __init__","Makes dataclass immutable (raises FrozenInstanceError on set)","Adds caching","Disables comparison"],a:1},
+  {q:"What does `typing.Protocol` define?",choices:["A network protocol","Structural subtyping — defines interface without inheritance","A base class","A dataclass"],a:1},
+  // 141–150: bonus medium
+  {q:"What does `functools.total_ordering` do?",choices:["Sorts a collection","Fills in missing comparison methods given __eq__ and one other","Creates total order","Validates ordering"],a:1},
+  {q:"What is `collections.ChainMap`?",choices:["Chained list","Groups multiple dicts into a single view","Linked hash map","Ordered dict"],a:1},
+  {q:"What does `itertools.islice(it, 5)` do?",choices:["Reverses first 5 items","Returns iterator of first 5 items","Slices a list","Creates a range"],a:1},
+  {q:"What is `contextlib.nullcontext()`?",choices:["Disables context","A do-nothing context manager for optional use","Null pointer guard","Async context"],a:1},
+  {q:"What does `str.translate(table)` do?",choices:["Moves the string","Maps characters using a translation table","Translates to another language","Encodes to bytes"],a:1},
+  {q:"What does `bytes(5)` create?",choices:["b'5'","5 zero bytes","Error","b'00000'"],a:1},
+  {q:"What does `memoryview(b)` provide?",choices:["A string view","A zero-copy view into binary data","A compressed view","A list of bytes"],a:1},
+  {q:"What does `@property.deleter` do?",choices:["Deletes the class","Defines a deleter for an attribute","Marks attribute as final","Removes property"],a:1},
+  {q:"What is `__annotations__` on a function/class?",choices:["Docstring","Dict of variable/parameter type annotations","Comment block","Import info"],a:1},
+  {q:"What does `typing.get_type_hints(obj)` do?",choices:["Returns docstring","Evaluates and returns type annotations as a dict","Checks types at runtime","Returns parameter names"],a:1},
+],
+
+/* ────────────── HARD ────────────── */
+hard: [
+  // 1–20: advanced Python internals
+  {q:"What is a metaclass in Python?",choices:["A class that cannot be instantiated","A class whose instances are classes","A mixin class","A singleton class"],a:1},
+  {q:"What is the default metaclass in Python 3?",choices:["object","ABCMeta","type","meta"],a:2},
+  {q:"How do you specify a custom metaclass?",choices:["class Foo(metaclass=MyMeta):","class Foo[MyMeta]:","class Foo extends MyMeta:","@metaclass(MyMeta)"],a:0},
+  {q:"What is `type.__new__` responsible for?",choices:["Initializing instance attributes","Actually creating the class object","Calling __init__","Registering methods"],a:1},
+  {q:"What is the MRO algorithm used by Python 3?",choices:["Depth-first search","C3 linearization","Breadth-first search","Random order"],a:1},
+  {q:"What does `__mro__` contain?",choices:["Method names","Tuple of classes in MRO order","Module path","Registered methods"],a:1},
+  {q:"What is a descriptor?",choices:["A function with multiple dispatch","Object that defines __get__/__set__/__delete__ to manage attribute access","A read-only property","An abstract class"],a:1},
+  {q:"What is the difference between a data descriptor and a non-data descriptor?",choices:["No difference","Data descriptor defines __set__ or __delete__; non-data only __get__","Non-data is faster","Data descriptor is read-only"],a:1},
+  {q:"What does `object.__getattribute__` do?",choices:["Calls __getattr__","Default attribute lookup mechanism","Creates attribute","Raises AttributeError always"],a:1},
+  {q:"When is `__getattr__` called?",choices:["Always","Only when normal attribute lookup fails","Before __getattribute__","Never by default"],a:1},
+  {q:"What is `__getattribute__` vs `__getattr__`?",choices:["Identical","__getattribute__ called for every access; __getattr__ only on failure","__getattr__ is newer","__getattribute__ only for special attrs"],a:1},
+  {q:"What does `__set_name__` do in a descriptor?",choices:["Sets instance name","Called when descriptor is assigned to a class attribute, receives owner and name","Renames the descriptor","Sets class variable"],a:1},
+  {q:"What does `object.__new__(cls)` do?",choices:["Initializes attributes","Creates and returns a new instance of cls","Calls __init__","Returns cls"],a:1},
+  {q:"When would you override `__new__`?",choices:["To add attributes","To control instance creation, e.g. singletons or immutable types","To speed up init","To add class methods"],a:1},
+  {q:"What is the singleton pattern in Python using metaclass?",choices:["Using a global variable","Overriding __call__ in metaclass to return existing instance","Using __new__ only","Subclassing object"],a:1},
+  {q:"What does `__prepare__` (metaclass method) do?",choices:["Pre-initializes instance","Returns the namespace dict used during class body execution","Validates methods","Clears cache"],a:1},
+  {q:"What is `__class_cell__` in Python 3?",choices:["Cell for type checks","Cell reference needed for zero-arg super() to work in closures","Memory allocator","Class variable"],a:1},
+  {q:"What is a cooperative multiple inheritance pattern?",choices:["All classes override the same method independently","All override the same method and call super() passing **kwargs down the chain","Using @override decorator","Avoiding multiple inheritance"],a:1},
+  {q:"What does `__subclasshook__` do in ABCMeta?",choices:["Finds subclasses","Customizes issubclass() check without explicit registration","Hooks into __init__","Validates ABC"],a:1},
+  {q:"What does `abc.register(Cls)` do?",choices:["Inherits from abc","Virtually registers Cls as subclass of the ABC without inheritance","Creates an ABC","Imports Cls"],a:1},
+  // 21–40: async, generators, coroutines
+  {q:"What does `async def` create?",choices:["A generator","A coroutine function","A thread","A process"],a:1},
+  {q:"What does `await` do?",choices:["Pauses thread","Suspends coroutine until awaitable completes","Blocks event loop","Calls synchronous function"],a:1},
+  {q:"What is an event loop?",choices:["Loop counting events","Core of async I/O: schedules and runs coroutines","A GUI event handler","A logging mechanism"],a:1},
+  {q:"What does `asyncio.run(coro())` do?",choices:["Runs coro in a new thread","Creates event loop and runs coroutine to completion","Schedules coro","Imports asyncio"],a:1},
+  {q:"What is `asyncio.gather()`?",choices:["Collects results synchronously","Runs multiple awaitables concurrently and collects results","Creates tasks","Blocks the loop"],a:1},
+  {q:"What is `asyncio.Task`?",choices:["Threaded worker","Wraps a coroutine and schedules it on the event loop","Future from another thread","Process task"],a:1},
+  {q:"What is `asyncio.Future`?",choices:["Completed result","Represents an eventual result; low-level than Task","Thread-safe result","Async generator"],a:1},
+  {q:"What does `async for` iterate over?",choices:["Regular iterables","Async iterables (defining __aiter__ and __anext__)","Generators","Threads"],a:1},
+  {q:"What does `async with` use?",choices:["Context managers","Async context managers (__aenter__/__aexit__)","Coroutines as guards","File-only context managers"],a:1},
+  {q:"What is `yield from` used for?",choices:["Yielding lists","Delegating to a sub-generator","Returning values","Sending values"],a:1},
+  {q:"What does `gen.send(value)` do?",choices:["Returns value","Sends a value into generator as result of current yield","Closes generator","Raises exception"],a:1},
+  {q:"What does `gen.throw(exc)` do?",choices:["Catches exception","Throws exception at the point where generator is paused","Re-raises from caller","Logs exception"],a:1},
+  {q:"What is `yield from sub_gen` equivalent to (simplified)?",choices:["list(sub_gen)","A loop forwarding values to/from sub_gen, handling send/throw","return sub_gen","Appending sub_gen"],a:1},
+  {q:"What are `async generators`?",choices:["Regular generators in async context","Functions using both async def and yield","Generators returning coroutines","Thread-based generators"],a:1},
+  {q:"What does `asyncio.shield(coro)` do?",choices:["Encrypts coroutine","Prevents coroutine from being cancelled","Prioritizes it","Runs in subprocess"],a:1},
+  {q:"What is `asyncio.Semaphore`?",choices:["Mutex lock","Limits concurrent access to a resource","Message queue","Thread barrier"],a:1},
+  {q:"What does `asyncio.Lock` provide?",choices:["Process lock","Mutual exclusion for coroutines","Thread lock","File lock"],a:1},
+  {q:"What does `asyncio.wait_for(coro, timeout)` do?",choices:["Waits indefinitely","Runs coro with timeout; raises TimeoutError","Cancels after timeout silently","Retries on timeout"],a:1},
+  {q:"What is `uvloop`?",choices:["UV light sensor","Fast drop-in replacement for asyncio event loop using libuv","GUI event loop","Logging loop"],a:1},
+  {q:"What is a coroutine in Python?",choices:["A regular function","A function that can suspend and resume execution at await points","A recursive function","A callback"],a:1},
+  // 41–60: CPython internals, memory
+  {q:"What are Python `objects` in CPython?",choices:["All data represented as C structs with refcount","Pure memory blocks","Compiled bytecode","Dictionary entries"],a:0},
+  {q:"What is reference counting in CPython?",choices:["Counting variables","Tracking how many references point to an object; free when 0","Loop iteration count","Import count"],a:1},
+  {q:"What handles cyclic garbage in CPython?",choices:["Reference counting alone","The cyclic garbage collector (gc module)","Memory allocator","The GIL"],a:1},
+  {q:"What does `gc.collect()` do?",choices:["Clears all variables","Runs the cyclic garbage collector","Frees all memory","Resets ref counts"],a:1},
+  {q:"What is the `__slots__` impact on memory?",choices:["Increases memory","Reduces per-instance memory by avoiding __dict__","Has no effect","Increases speed only"],a:1},
+  {q:"What is CPython bytecode?",choices:["Machine code","Intermediate representation executed by the Python VM","Assembly language","Source code with comments"],a:1},
+  {q:"What module lets you inspect bytecode?",choices:["sys","inspect","dis","ast"],a:2},
+  {q:"What does `dis.dis(func)` output?",choices:["Source code","Bytecode instructions of func","Memory layout","Type info"],a:1},
+  {q:"What is the `ast` module used for?",choices:["Astronomy calculations","Parsing and inspecting Python's abstract syntax tree","Async tasks","Attribute setting tool"],a:1},
+  {q:"What does `compile(source, filename, mode)` return?",choices:["Interpreted result","A code object","A string","AST node"],a:1},
+  {q:"What is `exec()` used for?",choices:["Executing shell commands","Executing a string or code object as Python code","Running executables","Environment execution"],a:1},
+  {q:"What does `eval()` do?",choices:["Evaluates file","Evaluates an expression string and returns its value","Logs result","Validates syntax"],a:1},
+  {q:"What is the difference between `exec` and `eval`?",choices:["No difference","eval returns a value (expression); exec executes statements (no return)","exec is older","eval is faster"],a:1},
+  {q:"What is `__import__('mod')` equivalent to?",choices:["import mod with aliases","import mod — dynamic import","from mod import *","Reloads mod"],a:1},
+  {q:"What does `importlib.import_module('mod')` do?",choices:["Only imports stdlib","Programmatically imports a module by name string","Reloads module","Validates module"],a:1},
+  {q:"What is `sys.modules`?",choices:["List of installed packages","Dict of all currently imported modules","Source paths","Module versions"],a:1},
+  {q:"What is `sys.path`?",choices:["File system path","List of directories Python searches when importing","Current working directory only","Env PATH variable"],a:1},
+  {q:"What does `importlib.reload(mod)` do?",choices:["Unloads module","Re-executes module code and updates sys.modules entry","Clears module","Imports fresh copy"],a:1},
+  {q:"What is `__builtins__`?",choices:["Built-in exceptions only","Module or dict of Python's built-in names","User-defined builtins","Standard library"],a:1},
+  {q:"What does `sys.getsizeof(obj)` return?",choices:["Reference count","Memory size of object in bytes","Type size","Number of attributes"],a:1},
+  // 61–80: advanced types, protocols, typing
+  {q:"What is `typing.TypeVar`?",choices:["A new type","A placeholder for generic types","An enum value","An alias"],a:1},
+  {q:"What does `typing.Generic[T]` do?",choices:["Creates a generic function","Allows a class to be parameterized with a type variable","Imports generics","Validates types at runtime"],a:1},
+  {q:"What is `typing.Callable[[int], str]`?",choices:["A function taking str returning int","A function taking int returning str","Any callable","A lambda"],a:1},
+  {q:"What does `typing.overload` do?",choices:["Overloads operators","Provides multiple type signatures for one function (type checker use)","Creates method overloading at runtime","Aliases function"],a:1},
+  {q:"What is `typing.Final`?",choices:["Marks end of class","Indicates a variable should not be reassigned","Marks deprecated code","Last type in union"],a:1},
+  {q:"What does `typing.Literal[1, 2, 3]` indicate?",choices:["int type","Value must be exactly 1, 2, or 3","Any number","Constant"],a:1},
+  {q:"What is `typing.TypedDict`?",choices:["Typed tuple","Dict with specific key types defined","Enum dict","Ordered typed dict"],a:1},
+  {q:"What is `PEP 695` (Python 3.12) about?",choices:["New async syntax","Type Parameter Syntax — `type X = ...` and `def f[T](x: T):`","New match syntax","F-string updates"],a:1},
+  {q:"What does `ParamSpec` in typing do?",choices:["Specifies parameter count","Captures parameter types of a callable for higher-order functions","Validates params","Sets default params"],a:1},
+  {q:"What is `Concatenate[int, P]` in typing used for?",choices:["Joins lists","Prepends a parameter type to a ParamSpec","Merges type hints","Concatenates strings"],a:1},
+  {q:"What does `__class_getitem__` enable?",choices:["Class factory","Subscript syntax MyClass[T]","Getting class dict","Metaclass feature"],a:1},
+  {q:"What is structural subtyping (static duck typing)?",choices:["Checking class hierarchy","Checking that an object has required attributes/methods (Protocol)","Runtime type checks","Explicit registration"],a:1},
+  {q:"What is `typing.runtime_checkable`?",choices:["Enables assert on types","Makes Protocol usable with isinstance()","Validates at import","Adds __instancecheck__"],a:1},
+  {q:"What does `TypeGuard[T]` do in a type annotation?",choices:["Ensures T is not None","Narrows type in the if branch when function returns True","Validates T","Guards import"],a:1},
+  {q:"What is `Self` type (Python 3.11)?",choices:["self parameter type","Type of the current class (useful for return types in subclasses)","Static self reference","Module type"],a:1},
+  {q:"What is `Never` / `NoReturn`?",choices:["Optional type","Indicates function never returns (raises or infinite loop)","Empty type","None type"],a:1},
+  {q:"What is `Unpack[Ts]` for?",choices:["Unpacking iterables","Unpacking TypeVarTuple for variadic generics","Dictionary unpacking","Args unpacking"],a:1},
+  {q:"What is `TypeVarTuple` (PEP 646)?",choices:["Multiple TypeVars","Variadic generic — represents arbitrary number of type arguments","Named tuple type","TypeVar alias"],a:1},
+  {q:"What does `dataclasses.KW_ONLY` do?",choices:["Marks class as keyword-only","All fields after it are keyword-only in __init__","Private field marker","Optional field"],a:1},
+  {q:"What is `__post_init__` in a dataclass?",choices:["Cleanup method","Called after auto-generated __init__; for custom initialization","Before __init__","Replaces __init__"],a:1},
+  // 81–100: advanced patterns
+  {q:"What is the `__new__` vs `__init__` execution order?",choices:["__init__ then __new__","__new__ creates instance first, then __init__ initializes it","Simultaneous","Depends on metaclass"],a:1},
+  {q:"What is `object.__init_subclass__` used for?",choices:["Initializing objects","Called on base class when a subclass is defined; allows customization hooks","Metaclass alternative","Plugin registration only"],a:1},
+  {q:"What does `__class_cell__` propagate in Python 3?",choices:["Class reference for super()","Method resolution list","Closure variables","Metaclass reference"],a:0},
+  {q:"What is the `__missing__` method on dict subclasses?",choices:["Handles key deletion","Called when a key is not found, avoiding KeyError","Validates keys","Sets defaults"],a:1},
+  {q:"What is `WeakReference` in Python?",choices:["Partial reference","Reference that doesn't prevent garbage collection","Encrypted reference","Module reference"],a:1},
+  {q:"What does `weakref.ref(obj)` return?",choices:["A copy of obj","A weak reference callable; returns obj or None if collected","The object ID","A proxy"],a:1},
+  {q:"What is `weakref.WeakValueDictionary`?",choices:["Dict with weak keys","Dict whose values are weak references; auto-removes on GC","Read-only dict","Lazy dict"],a:1},
+  {q:"What does the `__del__` finalizer guarantee about timing?",choices:["Immediate cleanup","Nothing — called at some point after refcount drops to 0 or GC collects","On each GC cycle","At program exit only"],a:1},
+  {q:"What is `sys.intern(s)` used for?",choices:["Importing internal module","Interning a string to reuse same object for equal strings","Locking strings","Encoding strings"],a:1},
+  {q:"What is string interning?",choices:["Encrypting strings","Reusing the same string object for identical string values, reducing memory","Caching output","Compressing strings"],a:1},
+  {q:"What does `__fspath__` protocol define?",choices:["File permissions","Allows objects to be used as file system paths","Float path","Function specialization"],a:1},
+  {q:"What is `os.fspath(path)`?",choices:["Formats path","Calls __fspath__ or returns str/bytes path unchanged","Sets file path","Joins paths"],a:1},
+  {q:"What does `io.StringIO` create?",choices:["File on disk","In-memory string stream (file-like object)","Buffered file","Socket stream"],a:1},
+  {q:"What does `io.BytesIO` create?",choices:["Byte file on disk","In-memory bytes stream","Byte array","Network buffer"],a:1},
+  {q:"What does `contextlib.suppress(*exceptions)` do?",choices:["Raises exceptions","Silently suppresses specified exceptions","Logs exceptions","Retries on exception"],a:1},
+  {q:"What does `contextlib.ExitStack` do?",choices:["Exits program","Dynamically manages multiple context managers","Stack data structure","Exit code manager"],a:1},
+  {q:"What is `functools.singledispatch`?",choices:["Single-use function","Transforms a function into a single-dispatch generic function","Dispatch table","Command dispatch"],a:1},
+  {q:"What does `functools.cache` do (Python 3.9+)?",choices:["Caches to file","Unbounded memoization cache (like lru_cache(maxsize=None))","LRU cache","Disk cache"],a:1},
+  {q:"What is `operator.attrgetter('name')`?",choices:["Gets dict key","Returns callable that gets named attribute from objects","Gets item","Gets module attr"],a:1},
+  {q:"What does `inspect.signature(func)` return?",choices:["Source code","Signature object describing function parameters","Bytecode","Docstring"],a:1},
+  // 101–120
+  {q:"What does `inspect.getsource(func)` return?",choices:["Bytecode","Source code of the function as a string","Signature","Module name"],a:1},
+  {q:"What is `sys.settrace(func)` used for?",choices:["Setting tracebacks","Installing a trace function called on each line/call/return (used by debuggers)","Logging","Profiling only"],a:1},
+  {q:"What is `sys.setprofile(func)` used for?",choices:["Setting profiles","Installing a profile function for function call/return events","Memory profiling","Line tracing"],a:1},
+  {q:"What does `cProfile.Profile` measure?",choices:["Memory use","CPU time and call counts for profiling","Network I/O","Disk I/O"],a:1},
+  {q:"What does `tracemalloc` module do?",choices:["Traces function calls","Tracks Python memory allocations","Traces imports","Profiles CPU"],a:1},
+  {q:"What is `__slots__` impact on inheritance?",choices:["No impact","Child class must also define __slots__ to avoid __dict__ reappearing","Slots are inherited automatically","Slots disable inheritance"],a:1},
+  {q:"What does `__init_subclass__(cls, **kwargs)` receive?",choices:["Instance","The subclass being created and any keyword args from class definition","Parent class","Metaclass"],a:1},
+  {q:"What is the `__set_name__(owner, name)` descriptor hook for?",choices:["Setting instance name","Notifies descriptor of its attribute name on owner class","Renames class","Sets module name"],a:1},
+  {q:"What does `type(name, bases, namespace)` create?",choices:["Instance","A new class dynamically","Type alias","Metaclass"],a:1},
+  {q:"What is `__build_class__` (builtins)?",choices:["A hook to build lists","Internal function called when `class` statement executes","Creates modules","Builds packages"],a:1},
+  {q:"What does `__qualname__` contain?",choices:["Module name","Qualified name including enclosing classes/functions","File path","Import path"],a:1},
+  {q:"What does `__module__` contain on a class/function?",choices:["Import list","Name of the module where it was defined","Path to module","Module object"],a:1},
+  {q:"What is `PEP 634` (Python 3.10)?",choices:["Assignment expressions","Structural Pattern Matching (match/case)","TypeVar syntax","Exception groups"],a:1},
+  {q:"What does `match x: case {'key': v}:` do?",choices:["Checks dict length","Matches dict with 'key' and binds value to v","Checks key type","Creates dict"],a:1},
+  {q:"What is a `*` pattern in match/case?",choices:["Wildcard for single item","Captures remaining items in a sequence pattern","Any type","Starred import"],a:1},
+  {q:"What does `case _:` match?",choices:["None","Anything — wildcard/default case","Only undefined","Empty collections"],a:1},
+  {q:"What is `PEP 572` (Python 3.8)?",choices:["F-strings","Walrus operator `:=` (assignment expressions)","Positional-only params","Dataclasses"],a:1},
+  {q:"What does `(n := len(data))` do?",choices:["Comparison","Assigns len(data) to n and evaluates to that value","Creates tuple","Lambda"],a:1},
+  {q:"What is `PEP 570` (Python 3.8)?",choices:["Dataclasses","Positional-only parameters using `/` in function signatures","Match/case","TypeVar"],a:1},
+  {q:"What does `def f(a, /, b, *, c)` mean?",choices:["a required, b optional, c keyword","a is positional-only, b positional-or-keyword, c keyword-only","All optional","All positional"],a:1},
+  // 121–150
+  {q:"What is `__init_subclass__` vs metaclass `__new__`?",choices:["Identical mechanism","__init_subclass__ is simpler hook on the class itself; metaclass __new__ gives full control","__init_subclass__ runs first","metaclass __new__ is deprecated"],a:1},
+  {q:"What is cooperative multiple inheritance best achieved with?",choices:["Not using MRO","Using super() consistently and accepting **kwargs in all __init__","Avoiding __init__","Using __new__ only"],a:1},
+  {q:"What is `__init__.py` in a namespace package (PEP 420)?",choices:["Required always","Not required — namespace packages have no __init__.py","Optional","Must be empty"],a:1},
+  {q:"What does `importlib.util.find_spec('mod')` return?",choices:["Module object","ModuleSpec or None if not found","Module path string","None always"],a:1},
+  {q:"What is `zipimport`?",choices:["Compress imports","Allows importing from ZIP archives","Async import","Lazy import"],a:1},
+  {q:"What does `__path__` on a package do?",choices:["Sets module path","Controls where submodules are searched","Names the package","Exports subpackages"],a:1},
+  {q:"What is a `frozen module` in Python 3.11+?",choices:["Immutable module","Core module compiled into the interpreter for faster startup","Cached module","Locked module"],a:1},
+  {q:"What is `__spec__` on a module?",choices:["Docstring","ModuleSpec object with import metadata","Function specs","Type spec"],a:1},
+  {q:"What is `sys.audit(event, *args)` (PEP 578)?",choices:["Logs to file","Fires audit hooks for security monitoring","Profiles code","Validates args"],a:1},
+  {q:"What is `PEP 654` (Python 3.11)?",choices:["Match statement","Exception Groups and `except*` syntax","TypeVar syntax","Lazy imports"],a:1},
+  {q:"What does `except* ValueError as eg:` do?",choices:["Catches first ValueError","Handles ValueError sub-exceptions inside an ExceptionGroup","Replaces except","Raises ValueError"],a:1},
+  {q:"What is `__tracebackhide__` used for in pytest/debug tools?",choices:["Hides all errors","Marks frames to hide from traceback display in debuggers","Disables tracing","Clears traceback"],a:1},
+  {q:"What does `sys.exc_info()` return?",choices:["Exception class","Tuple (type, value, traceback) of current exception","Stack frames","None"],a:1},
+  {q:"What is `__cause__` on an exception?",choices:["Exception message","Set by `raise X from Y`; the explicit cause","Parent exception","Traceback"],a:1},
+  {q:"What is `__context__` on an exception?",choices:["Exception message","Implicitly set when exception raised during exception handling","Cause exception","Module context"],a:1},
+  {q:"What does `raise ExceptionA from None` do?",choices:["Raises no exception","Suppresses the implicit exception context","Logs context","Converts to warning"],a:1},
+  {q:"What is `__suppress_context__`?",choices:["Hides all output","Set True by `raise X from None`; hides __context__ in traceback","Disables warnings","GC flag"],a:1},
+  {q:"What does `warnings.warn(msg, DeprecationWarning)` do?",choices:["Raises exception","Issues a deprecation warning (ignored by default in production)","Logs to file","Exits program"],a:1},
+  {q:"What is `-W error` flag in Python?",choices:["Enables warnings","Turns all warnings into errors","Disables warnings","Shows more warnings"],a:1},
+  {q:"What does `__future__` imports do?",choices:["Import future versions","Enable features from future Python versions in current code","Predict behavior","Import async features"],a:1},
+  // 141–150: bonus hard
+  {q:"What is `sys.monitoring` (Python 3.12)?",choices:["System monitor","Low-overhead monitoring API replacing sys.settrace for tools","Memory monitor","Event logger"],a:1},
+  {q:"What does `__init_subclass__` receive as keyword args?",choices:["Metaclass args","Keyword args from the class definition statement","Instance args","Method names"],a:1},
+  {q:"What is `PEP 673` (Python 3.11) about?",choices:["Match syntax","Self type for annotating return type of current class","Exception groups","TypeVarTuple"],a:1},
+  {q:"What does `object.__class_getitem__(cls, item)` enable?",choices:["Class copying","Generic subscript syntax e.g. list[int] without metaclass","Class iteration","Attribute access"],a:1},
+  {q:"What is `__instancecheck__` on a class/metaclass?",choices:["Default instance check","Customizes isinstance() behavior","Creates instance","Validates class"],a:1},
+  {q:"What does `__subclasscheck__` customize?",choices:["Subclass creation","issubclass() behavior","MRO","Inheritance depth"],a:1},
+  {q:"What is `PEP 695` type alias syntax `type Vector = list[float]`?",choices:["Creates a runtime list","Defines a type alias with proper scoping and introspection","Creates a subclass","Imports a type"],a:1},
+  {q:"What is `__type_params__` (Python 3.12)?",choices:["Type parameter count","Tuple of type parameters for generic classes/functions","Type aliases","Protocol params"],a:1},
+  {q:"What does `sys.exception()` return (Python 3.11+)?",choices:["Last exception type","Currently active exception (replaces sys.exc_info()[1])","Traceback","Exception list"],a:1},
+  {q:"What is `__release_buffer__` in the buffer protocol (Python 3.12)?",choices:["Frees memory","Called to release a buffer acquired by __buffer__","Returns buffer","Clears cache"],a:1},
+],
+};
+
+/* ═══════════════════════════════════════════════════════
+   SAVE / LOAD HELPERS
+════════════════════════════════════════════════════════ */
+const SAVE_KEY = 'pythonQuizSave';
+
+function saveState(state) {
+  // Exclude the in-memory Set (not JSON-serialisable); usedIndices array is the source of truth
+  const { usedSet, ...serialisable } = state;
+  localStorage.setItem(SAVE_KEY, JSON.stringify(serialisable));
+}
+function loadState() {
+  try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { return null; }
+}
+function clearSave() {
+  localStorage.removeItem(SAVE_KEY);
+  updateContinueBanner();
+  alert('Saved progress deleted.');
+}
+function updateContinueBanner() {
+  const state = loadState();
+  const banner = document.getElementById('continue-banner');
+  if (state) {
+    const levelLabel = {easy:'Easy 🟢', medium:'Medium 🟡', hard:'Hard 🔴'}[state.level];
+    document.getElementById('continue-title').textContent = `Continue — ${levelLabel}`;
+    document.getElementById('continue-desc').textContent =
+      `All-time: ${state.totalCorrect}/${state.totalAnswered} correct · ${state.usedIndices.length} questions seen`;
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   GAME STATE
+════════════════════════════════════════════════════════ */
+let state = null; // active game state
+
+const SESSION_SIZE = 10;
+
+function buildFreshState(level) {
+  return {
+    level,
+    usedIndices: [],   // global indices of questions already seen this run (for save/load)
+    usedSet: new Set(), // fast O(1) lookup — reconstructed from usedIndices after load
+    totalCorrect: 0,
+    totalAnswered: 0,
+    sessionQueue: [],  // indices for current session
+    sessionIdx: 0,
+    sessionCorrect: 0,
+  };
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function fillSessionQueue(st) {
+  const bank = QUESTIONS[st.level];
+  // Use a loop instead of recursion to avoid stack overflow when pool is reset
+  let available = bank.map((_,i) => i).filter(i => !st.usedSet.has(i));
+  if (available.length === 0) {
+    // All questions used — reset pool but keep stats
+    st.usedSet = new Set();
+    st.usedIndices = [];
+    available = bank.map((_,i) => i);
+  }
+  const pick = shuffle(available).slice(0, SESSION_SIZE);
+  st.sessionQueue = pick;
+  st.sessionIdx = 0;
+  st.sessionCorrect = 0;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SCREEN NAVIGATION
+════════════════════════════════════════════════════════ */
+function showScreen(id) {
+  ['screen-start','screen-quiz','screen-results'].forEach(s => {
+    document.getElementById(s).classList.add('hidden');
+  });
+  document.getElementById(id).classList.remove('hidden');
+}
+
+/* ═══════════════════════════════════════════════════════
+   START / CONTINUE
+════════════════════════════════════════════════════════ */
+function startGame(level) {
+  state = buildFreshState(level);
+  fillSessionQueue(state);
+  saveState(state);
+  launchSession();
+}
+
+function continueGame() {
+  const saved = loadState();
+  if (!saved) return startGame('easy');
+  state = saved;
+  // Rebuild the in-memory Set from the serialised array (Sets are not JSON-serialisable)
+  state.usedSet = new Set(state.usedIndices || []);
+  // If mid-session make sure queue exists
+  if (!state.sessionQueue || state.sessionQueue.length === 0 || state.sessionIdx >= SESSION_SIZE) {
+    fillSessionQueue(state);
+    saveState(state);
+  }
+  launchSession();
+}
+
+/* ═══════════════════════════════════════════════════════
+   SESSION LAUNCH
+════════════════════════════════════════════════════════ */
+function launchSession() {
+  document.getElementById('overlay-quit').classList.add('hidden');
+  showScreen('screen-quiz');
+  renderQuestion();
+}
+
+/* ═══════════════════════════════════════════════════════
+   RENDER QUESTION
+════════════════════════════════════════════════════════ */
+function renderQuestion() {
+  const { level, sessionQueue, sessionIdx, sessionCorrect, totalCorrect, totalAnswered } = state;
+  const bank = QUESTIONS[level];
+  const qIdx = sessionQueue[sessionIdx];
+  const q = bank[qIdx];
+
+  // Badge
+  const badge = document.getElementById('level-badge');
+  badge.textContent = {easy:'Easy 🟢', medium:'Medium 🟡', hard:'Hard 🔴'}[level];
+  badge.className = 'badge badge-' + level;
+
+  // Score
+  document.getElementById('score-display').textContent =
+    `Session: ${sessionCorrect}/${sessionIdx} · All-time: ${totalCorrect}/${totalAnswered}`;
+
+  // Progress
+  const done = sessionIdx;
+  const pct = (done / SESSION_SIZE) * 100;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('q-counter').textContent = `Question ${done + 1} of ${SESSION_SIZE}`;
+  document.getElementById('q-total').textContent = `${Math.round(pct)}%`;
+
+  // Question
+  document.getElementById('question-text').textContent = q.q;
+
+  // Shuffle choices for display (keep track of correct)
+  const letters = ['A','B','C','D'];
+  const indices = shuffle(q.choices.map((_,i) => i));
+  const correctOriginal = q.a;
+  let shuffledCorrectDisplay = null;
+
+  const choicesEl = document.getElementById('choices');
+  choicesEl.innerHTML = '';
+  indices.forEach((origIdx, displayPos) => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.innerHTML = `<span class="letter">${letters[displayPos]}</span><span>${q.choices[origIdx]}</span>`;
+    const isCorrect = origIdx === correctOriginal;
+    if (isCorrect) shuffledCorrectDisplay = displayPos;
+    btn.dataset.correct = isCorrect;
+    btn.dataset.display = displayPos;
+    btn.onclick = () => selectAnswer(btn, isCorrect, q.choices[correctOriginal]);
+    choicesEl.appendChild(btn);
+  });
+
+  // Hide feedback & next
+  const fb = document.getElementById('feedback');
+  fb.className = 'feedback hidden';
+  fb.textContent = '';
+  document.getElementById('btn-next').classList.add('hidden');
+}
+
+/* ═══════════════════════════════════════════════════════
+   ANSWER SELECTION
+════════════════════════════════════════════════════════ */
+function selectAnswer(clickedBtn, isCorrect, correctText) {
+  // Disable all
+  document.querySelectorAll('.choice-btn').forEach(btn => btn.disabled = true);
+
+  // Highlight
+  document.querySelectorAll('.choice-btn').forEach(btn => {
+    if (btn.dataset.correct === 'true') btn.classList.add('correct');
+  });
+  if (!isCorrect) clickedBtn.classList.add('wrong');
+
+  // Feedback
+  const fb = document.getElementById('feedback');
+  if (isCorrect) {
+    fb.textContent = '✓ Correct!';
+    fb.className = 'feedback correct';
+    state.sessionCorrect++;
+    state.totalCorrect++;
+  } else {
+    fb.textContent = `✗ Incorrect. Correct answer: ${correctText}`;
+    fb.className = 'feedback wrong';
+  }
+  state.totalAnswered++;
+
+  // Mark question as used (O(1) Set lookup)
+  const qIdx = state.sessionQueue[state.sessionIdx];
+  if (!state.usedSet.has(qIdx)) {
+    state.usedSet.add(qIdx);
+    state.usedIndices.push(qIdx);
+  }
+
+  state.sessionIdx++;
+  saveState(state);
+
+  // Show next / finish
+  if (state.sessionIdx >= SESSION_SIZE) {
+    document.getElementById('btn-next').textContent = 'See Results →';
+  } else {
+    document.getElementById('btn-next').textContent = 'Next →';
+  }
+  document.getElementById('btn-next').classList.remove('hidden');
+}
+
+/* ═══════════════════════════════════════════════════════
+   NEXT QUESTION
+════════════════════════════════════════════════════════ */
+function nextQuestion() {
+  if (state.sessionIdx >= SESSION_SIZE) {
+    showResults();
+  } else {
+    renderQuestion();
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   RESULTS
+════════════════════════════════════════════════════════ */
+function showResults() {
+  showScreen('screen-results');
+  const { sessionCorrect, totalCorrect, totalAnswered } = state;
+  const pct = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
+  document.getElementById('res-fraction').textContent = `${sessionCorrect}/${SESSION_SIZE}`;
+  document.getElementById('res-correct').textContent = sessionCorrect;
+  document.getElementById('res-wrong').textContent = SESSION_SIZE - sessionCorrect;
+  document.getElementById('res-total-seen').textContent = state.usedIndices.length;
+  document.getElementById('res-pct').textContent = pct + '%';
+
+  let msg = '';
+  if (sessionCorrect === SESSION_SIZE) msg = '🏆 Perfect score! Outstanding work!';
+  else if (sessionCorrect >= 8) msg = '🎉 Excellent! Keep it up!';
+  else if (sessionCorrect >= 6) msg = '👍 Good job! Room to grow!';
+  else if (sessionCorrect >= 4) msg = '📚 Keep studying — you\'re getting there!';
+  else msg = '💡 Don\'t give up! Review the basics and try again.';
+  document.getElementById('res-message').textContent = msg;
+}
+
+function nextSession() {
+  fillSessionQueue(state);
+  saveState(state);
+  launchSession();
+}
+
+function goHome() {
+  saveState(state);
+  showScreen('screen-start');
+  updateContinueBanner();
+}
+
+function resetProgress() {
+  if (confirm('Reset ALL progress? This cannot be undone.')) {
+    localStorage.removeItem(SAVE_KEY);
+    state = null;
+    showScreen('screen-start');
+    updateContinueBanner();
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   QUIT
+════════════════════════════════════════════════════════ */
+function promptQuit() {
+  document.getElementById('overlay-quit').classList.remove('hidden');
+}
+function cancelQuit() {
+  document.getElementById('overlay-quit').classList.add('hidden');
+}
+function confirmQuit() {
+  saveState(state);
+  document.getElementById('overlay-quit').classList.add('hidden');
+  showScreen('screen-start');
+  updateContinueBanner();
+}
+
+/* ═══════════════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════════════════ */
+updateContinueBanner();
+</script>
+</body>
+</html>
