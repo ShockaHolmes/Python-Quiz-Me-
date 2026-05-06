@@ -808,12 +808,12 @@ hard: [
 const SAVE_KEY = 'pythonQuizSave';
 
 function saveState(state) {
-  // Exclude the in-memory Set (not JSON-serialisable); usedIndices array is the source of truth
-  const { usedSet, ...serialisable } = state;
-  localStorage.setItem(SAVE_KEY, JSON.stringify(serialisable));
+  // Exclude the in-memory Set (not JSON-serializable); usedIndices array is the source of truth
+  const { usedSet, ...serializable } = state;
+  localStorage.setItem(SAVE_KEY, JSON.stringify(serializable));
 }
 function loadState() {
-  try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { return null; }
+  try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { console.error('Failed to load save state:', e); return null; }
 }
 function clearSave() {
   localStorage.removeItem(SAVE_KEY);
@@ -865,13 +865,16 @@ function shuffle(arr) {
 
 function fillSessionQueue(st) {
   const bank = QUESTIONS[st.level];
-  // Use a loop instead of recursion to avoid stack overflow when pool is reset
-  let available = bank.map((_,i) => i).filter(i => !st.usedSet.has(i));
+  // Build available indices directly with a loop for efficiency (avoids map+filter)
+  let available = [];
+  for (let i = 0; i < bank.length; i++) {
+    if (!st.usedSet.has(i)) available.push(i);
+  }
   if (available.length === 0) {
     // All questions used — reset pool but keep stats
     st.usedSet = new Set();
     st.usedIndices = [];
-    available = bank.map((_,i) => i);
+    for (let i = 0; i < bank.length; i++) available.push(i);
   }
   const pick = shuffle(available).slice(0, SESSION_SIZE);
   st.sessionQueue = pick;
@@ -903,7 +906,7 @@ function continueGame() {
   const saved = loadState();
   if (!saved) return startGame('easy');
   state = saved;
-  // Rebuild the in-memory Set from the serialised array (Sets are not JSON-serialisable)
+  // Rebuild the in-memory Set from the serialized array (Sets are not JSON-serializable)
   state.usedSet = new Set(state.usedIndices || []);
   // If mid-session make sure queue exists
   if (!state.sessionQueue || state.sessionQueue.length === 0 || state.sessionIdx >= SESSION_SIZE) {
